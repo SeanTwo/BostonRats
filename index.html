@@ -1,0 +1,82 @@
+<!DOCTYPE html>		
+<html>
+    <head>
+        <title>Boston Rats map!</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
+        <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+        <script src="jquery-2.1.1.min.js"></script> 
+        <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        #map{ height: 100% }
+        </style>
+    </head>
+    <body>
+
+    <div id="map"></div>
+
+        <script>
+            // initialize the map
+            var map = L.map('map').setView([42.35, -71.08], 13);
+
+            // add Esri simple world basemap
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}.png', {
+                maxZoom: 18,
+                attribution: 'Map data: <a href="https://openlayers.org/en/latest/examples/xyz-esri.html"> Esri',
+                id: 'esri.simple'
+            }).addTo(map);
+            
+            // fetch rodent data and image and add to map
+            async function fetch_setup() {
+                // Fetch all external data
+                const rodents = await fetch("https://mapsrule.github.io/leaflet-intro/rodents.geojson").then(response => response.json());
+                const rodentImage = await fetch("https://mapsrule.github.io/leaflet-intro/rat.gif").then(response => response.blob());
+                const neighborhoods = await fetch("https://mapsrule.github.io/leaflet-intro/neighborhoods.geojson").then(response => response.json());
+
+                var rodentIcon = L.icon({
+                    iconUrl: URL.createObjectURL(rodentImage),
+                    iconSize: [50,40]
+                });
+                
+                L.geoJson(rodents, {
+                    pointToLayer: function(feature, latlng) {
+                        var marker = L.marker(latlng, {icon: rodentIcon});
+                        marker.bindPopup(`<strong style="font-size: 14px;">Address:</strong> ${feature.properties.Location}<br/><strong style="font-size: 14px;">Sighting Date:</strong> ${feature.properties.OPEN_DT}`);
+                        marker.on('mouseover', function (e) {
+                            this.openPopup();
+                        });
+                        marker.on('mouseout', function (e) {
+                            this.closePopup();
+                        });
+                        return marker; 
+                    }
+                }).addTo(map);
+
+                L.geoJson(neighborhoods, {
+                    style: function(feature){
+                        var fillColor,
+                            density = feature.properties.density;
+                        if ( density > 80 ) fillColor = "#006837";
+                        else if ( density > 40 ) fillColor = "#31a354";
+                        else if ( density > 20 ) fillColor = "#78c679";
+                        else if ( density > 10 ) fillColor = "#c2e699";
+                        else if ( density > 0 ) fillColor = "#ffffcc";
+                        else fillColor = "#f7f7f7";  // no data
+                        return { color: "#999", weight: 1, fillColor: fillColor, fillOpacity: .6 };
+                    },
+                    onEachFeature: function( feature, layer ){
+                        layer.bindPopup( "<strong>" + feature.properties.Name + "</strong><br/>" + feature.properties.density + " rats per square mile" )
+                    }
+                }).addTo(map).bringToBack();
+
+            }
+            
+            fetch_setup();
+
+        </script>
+    </body>
+</html>
